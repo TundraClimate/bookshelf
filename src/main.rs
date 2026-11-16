@@ -50,7 +50,7 @@ fn init() -> Result<(), String> {
 fn run_app() -> Result<(), String> {
     loop {
         println!();
-        println!("commands: help quit save load");
+        println!("commands: help quit save load forgot");
 
         match inquire::prompt_text("Choose your command") {
             Ok(txt) => {
@@ -75,6 +75,7 @@ fn command(input: String) -> Result<bool, String> {
         "quit" => return Ok(true),
         "save" => {}
         "load" => {}
+        "forgot" => {}
         "" | "\n" | "\r\n" | "\r" | "\t" => {}
 
         txt => println!("'{txt}' is not command; try again."),
@@ -86,10 +87,11 @@ fn command(input: String) -> Result<bool, String> {
 fn help() {
     println!();
     println!("command help:");
-    println!("- help: prints command help");
-    println!("- quit: exit application");
-    println!("- save: saves current sub items to profile");
-    println!("- load: loads saved sub items from profile");
+    println!("- help:   prints command help");
+    println!("- quit:   exit application");
+    println!("- save:   saves current sub items to profile");
+    println!("- load:   loads saved sub items from profile");
+    println!("- forgot: removes saved profile");
     println!();
     println!("Ctrl+c exit application");
 }
