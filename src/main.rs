@@ -1,3 +1,5 @@
+use std::env;
+use std::fs;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -6,7 +8,34 @@ use steamworks::{Client, SIResult, UGC};
 
 pub const LOR_ID: u32 = 1256670;
 
-fn main() {}
+fn main() {
+    if let Err(e) = init() {
+        eprintln!("Initialize failed: {e}");
+
+        return;
+    }
+}
+
+fn init() -> Result<(), String> {
+    let exd = env::current_exe()
+        .map_err(|_| "exec file not found".to_string())
+        .and_then(|p| {
+            p.parent()
+                .ok_or("exec dir not found".to_string())
+                .map(|p| p.to_path_buf())
+        })?;
+
+    let save_slots = exd.join("save_slots");
+
+    if !save_slots.exists() {
+        fs::create_dir_all(&save_slots)
+            .map_err(|_| format!("creates directory '{}'", save_slots.display()))?;
+
+        println!("Creates directory '{}'", save_slots.display());
+    }
+
+    Ok(())
+}
 
 #[derive(Default)]
 struct Hook {
