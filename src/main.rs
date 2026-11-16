@@ -1,3 +1,4 @@
+use inquire::InquireError;
 use std::env;
 use std::fs;
 use std::sync::Arc;
@@ -14,6 +15,14 @@ fn main() {
 
         return;
     }
+
+    println!("Hello manager.");
+
+    if let Err(e) = run_app() {
+        eprintln!("Exit application: {e}");
+    }
+
+    println!("\nGoodbye manager.");
 }
 
 fn init() -> Result<(), String> {
@@ -35,6 +44,41 @@ fn init() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn run_app() -> Result<(), String> {
+    loop {
+        println!("\ncommands: help quit save load");
+
+        match inquire::prompt_text("Choose your command") {
+            Ok(txt) => {
+                if command(txt)? {
+                    break;
+                }
+            }
+            Err(e) => match e {
+                InquireError::OperationInterrupted => break,
+
+                _ => return Err("closed".to_string()),
+            },
+        }
+    }
+
+    Ok(())
+}
+
+fn command(input: String) -> Result<bool, String> {
+    match input.trim() {
+        "help" => {}
+        "quit" => return Ok(true),
+        "save" => {}
+        "load" => {}
+        "" | "\n" | "\r\n" | "\r" | "\t" => {}
+
+        txt => println!("'{txt}' is not command; try again."),
+    }
+
+    Ok(false)
 }
 
 #[derive(Default)]
