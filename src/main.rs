@@ -22,7 +22,8 @@ fn main() {
         eprintln!("Exit application: {e}");
     }
 
-    println!("\nGoodbye manager.");
+    println!();
+    println!("Goodbye manager.");
 }
 
 fn init() -> Result<(), String> {
@@ -48,7 +49,8 @@ fn init() -> Result<(), String> {
 
 fn run_app() -> Result<(), String> {
     loop {
-        println!("\ncommands: help quit save load");
+        println!();
+        println!("commands: help quit save load");
 
         match inquire::prompt_text("Choose your command") {
             Ok(txt) => {
@@ -69,7 +71,7 @@ fn run_app() -> Result<(), String> {
 
 fn command(input: String) -> Result<bool, String> {
     match input.trim() {
-        "help" => {}
+        "help" => help(),
         "quit" => return Ok(true),
         "save" => {}
         "load" => {}
@@ -79,6 +81,17 @@ fn command(input: String) -> Result<bool, String> {
     }
 
     Ok(false)
+}
+
+fn help() {
+    println!();
+    println!("command help:");
+    println!("- help: prints command help");
+    println!("- quit: exit application");
+    println!("- save: saves current sub items to profile");
+    println!("- load: loads saved sub items from profile");
+    println!();
+    println!("Ctrl+c exit application");
 }
 
 #[derive(Default)]
