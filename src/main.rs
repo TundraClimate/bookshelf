@@ -1,12 +1,16 @@
+use crossterm::cursor::MoveToColumn;
+use crossterm::queue;
+use crossterm::style::{Print, Stylize};
 use inquire::InquireError;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
-use steamworks::{Client, SIResult, UGC};
+use steamworks::{Client, PublishedFileId, SIResult, UGC};
 
 const LOR_ID: u32 = 1256670;
 
@@ -137,6 +141,7 @@ fn save(tr: &TaskRunner) -> Result<(), String> {
     let items = tr.ugc().subscribed_items(false);
     let items = items
         .into_iter()
+        .inspect(|i| subscribe(tr, *i))
         .map(|i| i.0.to_string())
         .collect::<Vec<_>>()
         .join(":");
@@ -147,6 +152,49 @@ fn save(tr: &TaskRunner) -> Result<(), String> {
 
     Ok(())
 }
+
+fn subscribe(tr: &TaskRunner, id: PublishedFileId) {
+    tr.run_task(|runner, hook| {
+        let mut stdout = io::stdout();
+
+        queue!(
+            stdout,
+            Print("| ".yellow()),
+            Print("Subscribe item: "),
+            Print(id.0.to_string().yellow()),
+        )
+        .unwrap();
+
+        stdout.flush().unwrap();
+
+        runner.ugc().subscribe_item(id, move |res| {
+            match res {
+                Ok(_) => queue!(
+                    stdout,
+                    MoveToColumn(0),
+                    Print("| ".green()),
+                    Print("Subscribe success: "),
+                    Print(id.0.to_string().green()),
+                )
+                .unwrap(),
+                Err(_) => queue!(
+                    stdout,
+                    MoveToColumn(0),
+                    Print("| ".red()),
+                    Print("Subscribe failed: "),
+                    Print(id.0.to_string().red()),
+                )
+                .unwrap(),
+            }
+
+            println!();
+
+            hook.ping();
+        });
+    });
+}
+
+fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {}
 
 #[derive(Default)]
 struct Hook {
