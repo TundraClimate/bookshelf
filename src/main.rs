@@ -1,10 +1,12 @@
 use crossterm::cursor::MoveToColumn;
 use crossterm::queue;
 use crossterm::style::{Print, Stylize};
+use gag::Gag;
 use inquire::InquireError;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -141,7 +143,6 @@ fn save(tr: &TaskRunner) -> Result<(), String> {
     let items = tr.ugc().subscribed_items(false);
     let items = items
         .into_iter()
-        .inspect(|i| subscribe(tr, *i))
         .map(|i| i.0.to_string())
         .collect::<Vec<_>>()
         .join(":");
@@ -167,7 +168,13 @@ fn subscribe(tr: &TaskRunner, id: PublishedFileId) {
 
         stdout.flush().unwrap();
 
+        let gst = Gag::stdout().unwrap();
+        let ger = Gag::stderr().unwrap();
+
         runner.ugc().subscribe_item(id, move |res| {
+            mem::drop(gst);
+            mem::drop(ger);
+
             match res {
                 Ok(_) => queue!(
                     stdout,
@@ -218,7 +225,14 @@ struct TaskRunner {
 
 impl TaskRunner {
     fn new(id: u32) -> SIResult<Self> {
-        let client = Client::init_app(id)?;
+        let client;
+
+        {
+            let _stdout = Gag::stdout().unwrap();
+            let _stderr = Gag::stderr().unwrap();
+
+            client = Client::init_app(id)?;
+        }
 
         Ok(Self {
             ugc: client.ugc(),
