@@ -1,13 +1,14 @@
 use inquire::InquireError;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 use steamworks::{Client, SIResult, UGC};
 
-pub const LOR_ID: u32 = 1256670;
+const LOR_ID: u32 = 1256670;
 
 fn main() {
     if let Err(e) = init() {
@@ -16,9 +17,15 @@ fn main() {
         return;
     }
 
+    let Ok(tr) = TaskRunner::new(LOR_ID) else {
+        eprintln!("Exit application: steam client not launched");
+
+        return;
+    };
+
     println!("Hello manager.");
 
-    if let Err(e) = run_app() {
+    if let Err(e) = run_app(tr) {
         eprintln!("Exit application: {e}");
     }
 
@@ -26,7 +33,7 @@ fn main() {
     println!("Goodbye manager.");
 }
 
-fn init() -> Result<(), String> {
+fn save_slot_dir() -> Result<PathBuf, String> {
     let exd = env::current_exe()
         .map_err(|_| "exec file not found".to_string())
         .and_then(|p| {
@@ -35,7 +42,15 @@ fn init() -> Result<(), String> {
                 .map(|p| p.to_path_buf())
         })?;
 
-    let save_slots = exd.join("save_slots");
+    Ok(exd.join("save_slots"))
+}
+
+fn is_empties<T: AsRef<str>>(s: T) -> bool {
+    matches!(s.as_ref(), "" | "\n" | "\r\n" | "\r" | "\t")
+}
+
+fn init() -> Result<(), String> {
+    let save_slots = save_slot_dir()?;
 
     if !save_slots.exists() {
         fs::create_dir_all(&save_slots)
@@ -47,14 +62,14 @@ fn init() -> Result<(), String> {
     Ok(())
 }
 
-fn run_app() -> Result<(), String> {
+fn run_app(tr: TaskRunner) -> Result<(), String> {
     loop {
         println!();
         println!("commands: help quit save load forgot");
 
         match inquire::prompt_text("Choose your command") {
             Ok(txt) => {
-                if command(txt)? {
+                if command(txt, &tr)? {
                     break;
                 }
             }
@@ -69,14 +84,14 @@ fn run_app() -> Result<(), String> {
     Ok(())
 }
 
-fn command(input: String) -> Result<bool, String> {
+fn command(input: String, tr: &TaskRunner) -> Result<bool, String> {
     match input.trim() {
         "help" => help(),
         "quit" => return Ok(true),
-        "save" => {}
+        "save" => save(tr)?,
         "load" => {}
         "forgot" => {}
-        "" | "\n" | "\r\n" | "\r" | "\t" => {}
+        txt if is_empties(txt) => {}
 
         txt => println!("'{txt}' is not command; try again."),
     }
@@ -94,6 +109,43 @@ fn help() {
     println!("- forgot: removes saved profile");
     println!();
     println!("Ctrl+c exit application");
+}
+
+fn save(tr: &TaskRunner) -> Result<(), String> {
+    let save_slots = save_slot_dir()?;
+
+    let Ok(slot_name) = inquire::prompt_text("Profile name") else {
+        println!("Save cancelled.");
+
+        return Ok(());
+    };
+
+    if is_empties(&slot_name) {
+        println!("Profile needs name have 1 or higher characters.");
+
+        return Ok(());
+    }
+
+    let slot_path = save_slots.join(format!("{slot_name}.txt"));
+
+    if slot_path.exists() {
+        println!("Profile '{}' is already exists.", slot_name);
+
+        return Ok(());
+    }
+
+    let items = tr.ugc().subscribed_items(false);
+    let items = items
+        .into_iter()
+        .map(|i| i.0.to_string())
+        .collect::<Vec<_>>()
+        .join(":");
+
+    fs::write(&slot_path, &items).map_err(|_| "profile slots not writable".to_string())?;
+
+    println!("New profile '{slot_name}' successfully saved.");
+
+    Ok(())
 }
 
 #[derive(Default)]
