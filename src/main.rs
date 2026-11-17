@@ -96,7 +96,7 @@ fn command(input: String, tr: &TaskRunner) -> Result<bool, String> {
         "quit" => return Ok(true),
         "save" => save(tr)?,
         "load" => load(tr)?,
-        "forgot" => {}
+        "forgot" => forgot()?,
         txt if is_empties(txt) => {}
 
         txt => println!("'{txt}' is not command; try again."),
@@ -248,9 +248,10 @@ fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
     });
 }
 
-fn load(tr: &TaskRunner) -> Result<(), String> {
+fn profiles() -> Result<Vec<String>, String> {
     let save_slots = save_slot_dir()?;
-    let profiles = fs::read_dir(&save_slots)
+
+    fs::read_dir(&save_slots)
         .map_err(|_| "save slots not readable".to_string())?
         .try_fold(vec![], |mut acc, e| {
             let entry = e.map_err(|_| "save slot not readable")?;
@@ -264,7 +265,12 @@ fn load(tr: &TaskRunner) -> Result<(), String> {
             acc.push(name);
 
             Ok::<_, String>(acc)
-        })?;
+        })
+}
+
+fn load(tr: &TaskRunner) -> Result<(), String> {
+    let save_slots = save_slot_dir()?;
+    let profiles = profiles()?;
 
     if profiles.is_empty() {
         println!("Available profiles not found");
@@ -293,6 +299,31 @@ fn load(tr: &TaskRunner) -> Result<(), String> {
         .filter_map(|s| s.parse::<u64>().ok())
         .map(PublishedFileId)
         .for_each(|id| subscribe(tr, id));
+
+    Ok(())
+}
+
+fn forgot() -> Result<(), String> {
+    let save_slots = save_slot_dir()?;
+    let profiles = profiles()?;
+
+    if profiles.is_empty() {
+        println!("Available profiles not found");
+
+        return Ok(());
+    }
+
+    let Ok(profile) = Select::new("Which profile forgot", profiles).prompt() else {
+        println!("Forgot cancelled.");
+
+        return Ok(());
+    };
+
+    let file = save_slots.join(format!("{profile}.txt"));
+
+    fs::remove_file(file).map_err(|_| "profile cannot access".to_string())?;
+
+    println!("Removed '{profile}' profile.");
 
     Ok(())
 }
