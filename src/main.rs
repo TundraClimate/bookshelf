@@ -180,7 +180,7 @@ fn subscribe(tr: &TaskRunner, id: PublishedFileId) {
                     stdout,
                     MoveToColumn(0),
                     Print("| ".green()),
-                    Print("Subscribe success: "),
+                    Print("Subscribe success: ".green()),
                     Print(id.0.to_string().green()),
                 )
                 .unwrap(),
@@ -188,7 +188,7 @@ fn subscribe(tr: &TaskRunner, id: PublishedFileId) {
                     stdout,
                     MoveToColumn(0),
                     Print("| ".red()),
-                    Print("Subscribe failed: "),
+                    Print("Subscribe failed: ".dark_green()),
                     Print(id.0.to_string().red()),
                 )
                 .unwrap(),
@@ -208,7 +208,7 @@ fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
         queue!(
             stdout,
             Print("| ".yellow()),
-            Print("Unsubscribe item: ".red()),
+            Print("Unsubscribe item: "),
             Print(id.0.to_string().yellow()),
         )
         .unwrap();
@@ -227,7 +227,7 @@ fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
                     stdout,
                     MoveToColumn(0),
                     Print("| ".green()),
-                    Print("Unsubscribe success: ".red()),
+                    Print("Unsubscribe success: ".yellow()),
                     Print(id.0.to_string().green()),
                 )
                 .unwrap(),
@@ -235,7 +235,7 @@ fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
                     stdout,
                     MoveToColumn(0),
                     Print("| ".red()),
-                    Print("Unsubscribe failed: ".red()),
+                    Print("Unsubscribe failed: ".yellow()),
                     Print(id.0.to_string().red()),
                 )
                 .unwrap(),
