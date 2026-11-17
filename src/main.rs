@@ -2,7 +2,7 @@ use crossterm::cursor::MoveToColumn;
 use crossterm::queue;
 use crossterm::style::{Print, Stylize};
 use gag::Gag;
-use inquire::InquireError;
+use inquire::{InquireError, Select};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
@@ -95,7 +95,7 @@ fn command(input: String, tr: &TaskRunner) -> Result<bool, String> {
         "help" => help(),
         "quit" => return Ok(true),
         "save" => save(tr)?,
-        "load" => {}
+        "load" => load(tr)?,
         "forgot" => {}
         txt if is_empties(txt) => {}
 
@@ -246,6 +246,55 @@ fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
             hook.ping();
         });
     });
+}
+
+fn load(tr: &TaskRunner) -> Result<(), String> {
+    let save_slots = save_slot_dir()?;
+    let profiles = fs::read_dir(&save_slots)
+        .map_err(|_| "save slots not readable".to_string())?
+        .try_fold(vec![], |mut acc, e| {
+            let entry = e.map_err(|_| "save slot not readable")?;
+            let name = entry
+                .path()
+                .file_stem()
+                .ok_or("invalid filename".to_string())?
+                .to_string_lossy()
+                .to_string();
+
+            acc.push(name);
+
+            Ok::<_, String>(acc)
+        })?;
+
+    if profiles.is_empty() {
+        println!("Available profiles not found");
+
+        return Ok(());
+    }
+
+    let Ok(profile) = Select::new("Which profile uses", profiles).prompt() else {
+        println!("Load cancelled.");
+
+        return Ok(());
+    };
+
+    let file = save_slots.join(format!("{profile}.txt"));
+
+    let Ok(profile) = fs::read_to_string(&file) else {
+        return Err(format!("save '{profile}' is not readable"));
+    };
+
+    for item in tr.ugc().subscribed_items(false) {
+        unsubscribe(tr, item);
+    }
+
+    profile
+        .split(":")
+        .filter_map(|s| s.parse::<u64>().ok())
+        .map(PublishedFileId)
+        .for_each(|id| subscribe(tr, id));
+
+    Ok(())
 }
 
 #[derive(Default)]
