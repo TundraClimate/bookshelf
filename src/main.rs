@@ -201,7 +201,52 @@ fn subscribe(tr: &TaskRunner, id: PublishedFileId) {
     });
 }
 
-fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {}
+fn unsubscribe(tr: &TaskRunner, id: PublishedFileId) {
+    tr.run_task(|runner, hook| {
+        let mut stdout = io::stdout();
+
+        queue!(
+            stdout,
+            Print("| ".yellow()),
+            Print("Unsubscribe item: ".red()),
+            Print(id.0.to_string().yellow()),
+        )
+        .unwrap();
+
+        stdout.flush().unwrap();
+
+        let gst = Gag::stdout().unwrap();
+        let ger = Gag::stderr().unwrap();
+
+        runner.ugc().unsubscribe_item(id, move |res| {
+            mem::drop(gst);
+            mem::drop(ger);
+
+            match res {
+                Ok(_) => queue!(
+                    stdout,
+                    MoveToColumn(0),
+                    Print("| ".green()),
+                    Print("Unsubscribe success: ".red()),
+                    Print(id.0.to_string().green()),
+                )
+                .unwrap(),
+                Err(_) => queue!(
+                    stdout,
+                    MoveToColumn(0),
+                    Print("| ".red()),
+                    Print("Unsubscribe failed: ".red()),
+                    Print(id.0.to_string().red()),
+                )
+                .unwrap(),
+            }
+
+            println!();
+
+            hook.ping();
+        });
+    });
+}
 
 #[derive(Default)]
 struct Hook {
